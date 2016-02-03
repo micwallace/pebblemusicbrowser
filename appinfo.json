@@ -1,0 +1,25 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "micwallace@gmx.com",
+    "enableMultiJS": false,
+    "longName": "PEBBLE MUSIC BROWSER",
+    "projectType": "native",
+    "resources": {
+        "media": []
+    },
+    "sdkVersion": "3",
+    "shortName": "MUSIC BROWSER",
+    "targetPlatforms": [
+        "aplite",
+        "basalt",
+        "chalk"
+    ],
+    "uuid": "68823cb3-0bdd-4de1-9b07-70a91f0848af",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": false
+    }
+}
