@@ -6,9 +6,6 @@ Window *window;
 Window *album_window;
 Window *song_window;
 uint8_t s_inboxBuffer[INBOX_BUFFER_SIZE];
-/*static DictionaryIterator list_data;
-static DictionaryIterator album_data;
-static DictionaryIterator song_data;*/
 char **artist_data;
 char **album_data;
 char **song_data;
@@ -48,19 +45,48 @@ void send_message(char *action, char *param1, char *param2){
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Appmessage sent: %d", result); 
 }
 
-static char** load_data_from_dictionary(DictionaryIterator *received, char **dest, int size){
-	dest = malloc(size * sizeof(char*));
+static void load_artists_from_dictionary(DictionaryIterator *received, int size){
+	free(artist_data);
+	artist_data = malloc(size * sizeof(char*));
 	Tuple *tuple;
 	for(int i = 0; i < size; i++) {
 		tuple = dict_find(received, i+2);
 		if (tuple != NULL){
-			dest[i] = malloc(sizeof(tuple->value->cstring));
-			dest[i] = tuple->value->cstring;
+			artist_data[i] = malloc(strlen(tuple->value->cstring)+1);
+			strcpy(artist_data[i], tuple->value->cstring);
 		}
 	}
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "First item: %s", dest[0]); 
-	return dest;
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "First item: %s", artist_data[0]); 
 }
+
+static void load_albums_from_dictionary(DictionaryIterator *received, int size){
+	free(album_data);
+	album_data = malloc(size * sizeof(char*));
+	Tuple *tuple;
+	for(int i = 0; i < size; i++) {
+		tuple = dict_find(received, i+2);
+		if (tuple != NULL){
+			album_data[i] = malloc(strlen(tuple->value->cstring)+1);
+			strcpy(album_data[i], tuple->value->cstring);
+		}
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "First item: %s", album_data[0]); 
+}
+
+static void load_songs_from_dictionary(DictionaryIterator *received, int size){
+	free(song_data);
+	song_data = malloc(size * sizeof(char*));
+	Tuple *tuple;
+	for(int i = 0; i < size; i++) {
+		tuple = dict_find(received, i+2);
+		if (tuple != NULL){
+			song_data[i] = malloc(strlen(tuple->value->cstring)+1);
+			strcpy(song_data[i], tuple->value->cstring);
+		}
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "First item: %s", song_data[0]); 
+}
+
 
 // Called when a message is received from PebbleKitJS
 static void in_received_handler(DictionaryIterator *received, void *context) {
@@ -71,21 +97,18 @@ static void in_received_handler(DictionaryIterator *received, void *context) {
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Received Action: %s", action->value->cstring); 
 		Tuple *count = dict_find(received, DATA_KEY);
 		if(strcmp(action->value->cstring, "ARTISTS") == 0) {
-			//memcpy(&list_data, received, sizeof(*received));
 			NUM_ARTISTS = count->value->int32;
-			artist_data = load_data_from_dictionary(received, artist_data, count->value->int32);
+			load_artists_from_dictionary(received, count->value->int32);
 			menu_layer_reload_data(artist_menu_layer);
 		}
 		if(strcmp(action->value->cstring, "ALBUMS") == 0) {
-			//memcpy(&album_data, received, sizeof(*received));
 			NUM_ALBUMS = count->value->int32;
-			album_data = load_data_from_dictionary(received, album_data, count->value->int32);
+			load_albums_from_dictionary(received, count->value->int32);
 			menu_layer_reload_data(album_menu_layer);
 		}
 		if(strcmp(action->value->cstring, "SONGS") == 0) {
-			//memcpy(&song_data, received, sizeof(*received));
 			NUM_SONGS = count->value->int32;
-			song_data = load_data_from_dictionary(received, song_data, count->value->int32);
+			load_songs_from_dictionary(received, count->value->int32);
 			menu_layer_reload_data(song_menu_layer);
 		}
 	}
@@ -115,7 +138,6 @@ static uint16_t song_menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t 
 }
 
 static void song_menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
-	//Tuple *item = dict_find(&song_data, cell_index->row+2);
 	char *name = song_data[cell_index->row];
 	if (name){
 		// There is title draw for something more simple than a basic menu item
@@ -132,11 +154,10 @@ static void song_menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, 
 
 static void song_menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu long click!"); 
-  //Tuple *item = dict_find(&song_data, cell_index->row+2);
 	char *name = song_data[cell_index->row];
 	if (name){
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click item found: %s", name);
-		send_message("PLAY", currentArtist, name);
+		send_message("PLAYSONG", currentArtist, name);
 	}
 }
 
@@ -174,7 +195,9 @@ static void song_window_load(Window *window) {
 }
 	
 static void song_window_unload(Window *window) {
-  // Destroy the menu layer
+  // Clear data & destroy the menu layer
+	song_data = 0;
+	NUM_SONGS = 0;
   menu_layer_destroy(song_menu_layer);
 }
 
@@ -188,7 +211,6 @@ static uint16_t album_menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_t
 }
 
 static void album_menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
-	//Tuple *item = dict_find(&album_data, cell_index->row+2);
 	char *name = album_data[cell_index->row];
 	if (name){
 		// There is title draw for something more simple than a basic menu item
@@ -205,7 +227,6 @@ static void album_menu_draw_row_callback(GContext* ctx, const Layer *cell_layer,
 
 static void album_menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click!"); 
-  //Tuple *item = dict_find(&album_data, cell_index->row+2);
 	char *name = album_data[cell_index->row];
 	if (name){
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click item found: %s", name);
@@ -223,11 +244,10 @@ static void album_menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_in
 
 static void album_menu_select_long_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu long click!"); 
-  //Tuple *item = dict_find(&album_data, cell_index->row+2);
 	char *name = album_data[cell_index->row];
 	if (name){
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click item found: %s", name);
-		send_message("PLAY", name, "");
+		send_message("PLAY", currentArtist, name);
 	}
 }
 
@@ -265,7 +285,9 @@ static void album_window_load(Window *window) {
 }
 	
 static void album_window_unload(Window *window) {
-  // Destroy the menu layer
+  // Clear data & destroy the menu layer
+	album_data = 0;
+	NUM_ALBUMS = 0;
   menu_layer_destroy(album_menu_layer);
 }
 
@@ -279,7 +301,6 @@ static uint16_t artist_menu_get_num_rows_callback(MenuLayer *menu_layer, uint16_
 }
 
 static void artist_menu_draw_row_callback(GContext* ctx, const Layer *cell_layer, MenuIndex *cell_index, void *data) {
-	//Tuple *item = dict_find(&list_data, cell_index->row+2);
 	char *item = artist_data[cell_index->row];
 	if (item){
 		// There is title draw for something more simple than a basic menu item
@@ -296,7 +317,6 @@ static void artist_menu_draw_row_callback(GContext* ctx, const Layer *cell_layer
 
 static void artist_menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click!"); 
-  //Tuple *item = dict_find(&list_data, cell_index->row+2);
 	char *item = artist_data[cell_index->row];
 	if (item){
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click item found: %s", item);
@@ -315,7 +335,6 @@ static void artist_menu_select_callback(MenuLayer *menu_layer, MenuIndex *cell_i
 
 static void artist_menu_select_long_callback(MenuLayer *menu_layer, MenuIndex *cell_index, void *data) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu long click!"); 
-  //Tuple *item = dict_find(&list_data, cell_index->row+2);
 	char *item = artist_data[cell_index->row];
 	if (item){
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu click item found: %s", item);
@@ -362,9 +381,6 @@ static void main_window_unload(Window *window) {
 }
 
 void init(void) {
-	//dict_write_begin(&list_data, s_inboxBuffer, INBOX_BUFFER_SIZE);
-	//dict_write_end(&list_data);
-	
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
     .load = main_window_load,
